@@ -2,46 +2,66 @@ import socket
 import sys
 from threading import Thread
 
-# Get client data
-host = input("Host: ")
-port = input("Port: ")
-if not host: host = "localhost"
-if not port: 
-    port = 3585
-else:
-    port = int(port)
-
-
-# Attempt connection to server
-try:
-    clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientSocket.connect((host, port))
-except:
-    print("Could not make a connection to The Chat App")
-    input("Press enter to quit")
-    sys.exit(0)
-
-# Wait for incoming data from server
 def receive(clientSocket):
+    """
+    Continuosly receive and print messages from the server.
+
+    Args:
+        clientSocket (socket.socket): The client's socket object.
+
+    Returns:
+        None
+    """
     while True:
         try:
             data = clientSocket.recv(144)
             print(str(data.decode("utf-8")))
-        except:
-            print("You have been disconnected from The Chat App")
+        except Exception as e:
+            print("You have been disconnected from The Chat App: ", e)
             break
 
-# Create new thread to wait for data
-receiveThread = Thread(target = receive, args = (clientSocket, ))
-receiveThread.daemon = True
-receiveThread.start()
+def main():
+    """
+    Entry point for The Chat App client program
 
-# Send data to server
-while True:
-    message = input()
-    clientSocket.sendall(str.encode(message))
-    if (message == "{quit}"):
-        break
+    Returns:
+        None
+    """
 
-clientSocket.close()
-sys.exit(0)
+    # Get client data from the user
+    host = input("Host: ")
+    port = input("Port: ")
+
+    if not host: 
+        host = "localhost"
+    if not port: 
+        port = 3585
+    else:
+        port = int(port)
+
+    # Attempt connection to the server
+    try:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.connect((host, port))
+    except Exception as e:
+        print("Could not make a connection to The Chat App: ", e)
+        input("Press enter to quit")
+        sys.exit(0)
+
+    # Wait for incoming messages on a different thread
+    receiveThread = Thread(target = receive, args = (clientSocket, ))
+    receiveThread.daemon = True
+    receiveThread.start()
+
+    # Transmit user's message to the server
+    while True:
+        message = input()
+        clientSocket.sendall(str.encode(message))
+        if (message == "{quit}"):
+            break
+
+    clientSocket.close()
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

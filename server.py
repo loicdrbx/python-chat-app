@@ -1,24 +1,49 @@
 import socket
 from threading import Thread
 
-# Variables for holding information about connections
+# Stores information about connected clients
 connections = {}
 
-# Client class: a new instance created for each connected client
-# Each instance has the socket and address that is associated with,
-# along with a unique username
 class Client():
+    """ Class representing a connected client. """
+
     def __init__(self, socket, address, name):
+        """
+        Initialize a new Client object.
+
+        Args:
+            socket (socket.socket): The client's socket object.
+            address (tuple): The client's address (host, port).
+            name (str): The client's unique username.
+
+        Returns:
+            None
+        """
         self.socket = socket
         self.address = address
         self.name = name
 
     def __str__(self):
+        """
+        Get a string representation of the Client object.
+
+        Returns:
+            str: A string representation of the Client object.
+        """
         return str(self.id) + " " + str(self.address)
 
-# Handle messages to and from a connected client
+
 def handleClientMessages(clientInfo):
-    # Gather and store client data in connections dict
+    """
+    Handle messages going to and coming from a connected client.
+
+    Args:
+        clientInfo (tuple): A tuple containing the client's socket and address.
+
+    Returns:
+        None
+    """
+    # Gather and store client data in the connections dictionary
     clientSock, address = clientInfo
     name = str(clientSock.recv(144).decode())
     while name in connections:
@@ -42,26 +67,43 @@ def handleClientMessages(clientInfo):
         else:
             broadcast(message, name)
 
-# Broadcast message to other clients
 def broadcast(message, senderName = ""):
-    # Check if direct message
+    """
+    Broadcast a message to connected clients.
+
+    Args:
+        message (bytes): The message to be broadcasted.
+        senderName (str, optional): The username of the message sender. Defaults to "".
+
+    Returns:
+        None
+    """
     recipientName = parseUsername(message)
     if len(recipientName) > 0:
+        # private message
         message = message.replace(str.encode("@{" + recipientName + "}"), b"")
         if recipientName in connections:
             connections[recipientName].socket.sendall(str.encode(senderName + "(private): ") + message)
         else:
             connections[senderName].socket.sendall(str.encode(recipientName + " is not a user on The Chat App."))       
     else:
+        # group message
         for Client in connections.values():
-            # From server to entire chat room
-            if not senderName:
+            if not senderName:  # no senderName for messages comming from the server.
                 Client.socket.sendall(message)
             elif senderName and Client.name != senderName:
                 Client.socket.sendall(str.encode(senderName + ": ") + message)
 
-# Extract username from message
 def parseUsername(message):
+    """
+    Extract a username tag from a message.
+
+    Args:
+        message (bytes): The message from which to extract the username.
+
+    Returns:
+        str: The extracted username or an empty string if no username is found.    
+    """
     username = ""
     messageStr = str(message.decode())
     if messageStr.startswith("@{"):
@@ -74,8 +116,16 @@ def parseUsername(message):
                 username += messageStr[i]
     return ""
 
-# Monitor for new connections
 def newConnections(serverSock):
+    """
+    Monitor new client connections.
+
+    Args:
+        serverSock (socket.socket): The server socket to listen for connections.
+
+    Returns:
+        None
+    """
     while True:
         # Continuously listen for connections
         clientSock, address = serverSock.accept()
@@ -88,10 +138,18 @@ def newConnections(serverSock):
         handleClientThread.start()
 
 def main():
+    """
+    Entry point for the chat server.
+
+    Returns:
+        None
+    """
     # Get host and port
     host = input("Host: ")
     port = input("Port: ")
-    if not host: host = "localhost"
+
+    if not host: 
+        host = "localhost"
     if not port: 
         port = 3585
     else:
@@ -106,4 +164,5 @@ def main():
     # Listen for new connections
     newConnections(sock)
     
-main()
+if __name__ == "__main__":
+    main()
